@@ -48,7 +48,7 @@ fun CarDialog(isOpen: MutableState<Boolean>, listBrand: SnapshotStateList<BrandM
     }
 
     val brandIdValue = remember {
-        mutableStateOf(0)
+        mutableStateOf(newCarModel.brandid)
     }
 
     val isDropDownOpen = remember {
@@ -147,7 +147,7 @@ fun CarDialog(isOpen: MutableState<Boolean>, listBrand: SnapshotStateList<BrandM
                             isDropDownOpen.value = true
                         },
                     style = TextStyle(color = Color.White),
-                    text = "Марка: ${listBrand[brandIdValue.value].name}"
+                    text = "Марка: ${listBrand.first{it.id.toInt() == brandIdValue.value} .name}"
                 )
 
                 DropdownMenu(
@@ -158,6 +158,7 @@ fun CarDialog(isOpen: MutableState<Boolean>, listBrand: SnapshotStateList<BrandM
                         DropdownMenuItem(
                             text = {Text(it.name)},
                             onClick = {
+                                newCarModel.brandid = it.id.toInt()
                                 brandIdValue.value = it.id.toInt()
                                 isDropDownOpen.value = false
                             }
@@ -189,7 +190,15 @@ fun CarDialog(isOpen: MutableState<Boolean>, listBrand: SnapshotStateList<BrandM
             }
         },
         confirmButton = {
-            Button(onClick = {onAgree(newCarModel)}) {
+            Button(onClick = {
+                if(
+                    newCarModel.name.isNotEmpty()
+                    &&
+                    newCarModel.description.isNotEmpty()
+                ){
+                    onAgree(newCarModel)
+                }
+            }) {
                 Text(
                     text = "Подтвердить",
                     style = TextStyle(

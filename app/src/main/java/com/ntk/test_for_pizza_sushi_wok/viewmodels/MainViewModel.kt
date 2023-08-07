@@ -17,6 +17,7 @@ import com.ntk.test_for_pizza_sushi_wok.enums.CarsFilterEnum
 import com.ntk.test_for_pizza_sushi_wok.models.BrandModel
 import com.ntk.test_for_pizza_sushi_wok.models.CarModel
 import com.ntk.test_for_pizza_sushi_wok.models.CountryModel
+import com.ntk.test_for_pizza_sushi_wok.receivers.NetworkRecevier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,18 +30,22 @@ class MainViewModel: ViewModel() {
     var selectedBrand = mutableStateOf(-1)
     var selectedCountry = mutableStateOf(-1)
 
+    var isDataLoading = mutableStateOf(true)
+
     var selectedSort: MutableState<CarsFilterEnum> = mutableStateOf(CarsFilterEnum.None)
 
     private lateinit var connection: Connection
 
     init {
         viewModelScope.launch{
-            getConnection().join()
+            if(NetworkRecevier.is_online.value){
+                getConnection().join()
 
-            getAllCountry().join()
-            getAllBrand().join()
+                getAllCountry().join()
+                getAllBrand().join()
 
-            getAllCars()
+                getAllCars()
+            }
         }
     }
 
@@ -57,6 +62,8 @@ class MainViewModel: ViewModel() {
 
         carList.clear()
 
+        isDataLoading.value = true
+
         withContext(Dispatchers.IO) {
             connection.sendPreparedStatement(
                 "SELECT * FROM CARS"
@@ -65,6 +72,8 @@ class MainViewModel: ViewModel() {
                     model.brand = brandList.firstOrNull{ it.id == model.brandid.toString() }
 
                     carList.add(model)
+
+                    isDataLoading.value = false
             }
         }
 
@@ -74,14 +83,14 @@ class MainViewModel: ViewModel() {
     fun addCar(newModel: CarModel) = viewModelScope.launch {
         newModel.pushModelToBase(connection)
             .invokeOnCompletion {
-                carList.add(newModel)
+                getAllCars()
             }
     }
 
     fun editCar(editModel: CarModel) = viewModelScope.launch {
         editModel.editModelFromBase(connection)
             .invokeOnCompletion {
-                carList[carList.indexOfFirst { it.id == editModel.id }] = editModel
+                getAllCars()
             }
     }
 
@@ -129,6 +138,18 @@ class MainViewModel: ViewModel() {
     }
 
     fun filterList(): List<CarModel>{
+        if(selectedBrand.value == -1 && selectedCountry.value == -1){
+            var filterList = carList.toList()
+
+            if(selectedSort.value == CarsFilterEnum.PriceHigh){
+                filterList = filterList.sortedByDescending { it.price }
+            }else if (selectedSort.value == CarsFilterEnum.PriceLow){
+                filterList = filterList.sortedBy { it.price }
+            }
+
+            return filterList
+        }
+
         var filterList = carList.filter {
             if(selectedBrand.value != -1 || selectedCountry.value != -1)
                 if(selectedBrand.value != -1)

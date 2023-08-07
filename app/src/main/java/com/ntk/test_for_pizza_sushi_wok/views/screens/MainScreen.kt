@@ -1,5 +1,6 @@
 package com.ntk.test_for_pizza_sushi_wok.views.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,14 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -32,13 +32,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.ntk.test_for_pizza_sushi_wok.enums.CarsFilterEnum
 import com.ntk.test_for_pizza_sushi_wok.models.CarModel
+import com.ntk.test_for_pizza_sushi_wok.receivers.NetworkRecevier
 import com.ntk.test_for_pizza_sushi_wok.viewmodels.MainViewModel
 import com.ntk.test_for_pizza_sushi_wok.views.custom.CarModelView
 import com.ntk.test_for_pizza_sushi_wok.views.dialogs.CarDialog
@@ -56,6 +59,7 @@ fun MainScreen(controller: NavHostController) {
     val isBrandDropOpen  = remember { mutableStateOf(false) }
     val isSortDropOpen  = remember { mutableStateOf(false) }
 
+    val context = LocalView.current.context
 
     val openAddDialog = remember { mutableStateOf(false) }
     if(openAddDialog.value)CarDialog(openAddDialog, viewModel.brandList){newModel ->
@@ -71,10 +75,23 @@ fun MainScreen(controller: NavHostController) {
 
     LaunchedEffect(refreshing) {
         if (refreshing) {
-            viewModel.getAllCars {
+            if(NetworkRecevier.is_online.value) {
+                viewModel.getAllCars {
+                    refreshing = false
+                }
+            }else{
+                Toast.makeText(context, "Осутствует интернет соединение", Toast.LENGTH_SHORT).show()
                 refreshing = false
             }
         }
+    }
+
+    if(viewModel.isDataLoading.value)Box(
+        modifier = Modifier
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
     }
 
     Box(
@@ -83,24 +100,34 @@ fun MainScreen(controller: NavHostController) {
             .padding(12.dp),
         contentAlignment = Alignment.BottomEnd
     ){
-        FloatingActionButton(
-            modifier = Modifier
-                .shadow(
-                    elevation = 8.dp,
-                    spotColor = Color.Gray,
-                    ambientColor = Color.Gray,
-                    shape = RoundedCornerShape(16.dp)
-                ),
-            containerColor = Color.Black,
-            onClick = {
-                openAddDialog.value = true
+        Column {
+            FloatingActionButton(
+                modifier = Modifier
+                    .shadow(
+                        elevation = 8.dp,
+                        spotColor = Color.Gray,
+                        ambientColor = Color.Gray,
+                        shape = RoundedCornerShape(16.dp)
+                    ),
+                containerColor = Color.Black,
+                onClick = {
+                    if(NetworkRecevier.is_online.value) openAddDialog.value = true
+                }
+            ) {
+                if(NetworkRecevier.is_online.value){
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                }else{
+                    CircularProgressIndicator(color = Color.Red)
+                }
             }
-        ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = null,
-                tint = Color.White
-            )
+
+            if(!NetworkRecevier.is_online.value){
+                Text("Отсутствует\nсоединение", color = Color.Red, fontSize = 8.sp)
+            }
         }
     }
 
@@ -259,12 +286,16 @@ fun MainScreen(controller: NavHostController) {
                         CarModelView(
                             model = model,
                             onEdit = {
-                                selectedModel.value = it
-                                openEditDialog.value = true
+                                if(NetworkRecevier.is_online.value) {
+                                    selectedModel.value = it
+                                    openEditDialog.value = true
+                                }
                             },
                             onDelete = {
-                                selectedModel.value = it
-                                viewModel.deleteCar(it)
+                                if(NetworkRecevier.is_online.value) {
+                                    selectedModel.value = it
+                                    viewModel.deleteCar(it)
+                                }
                             }
                         )
                     }

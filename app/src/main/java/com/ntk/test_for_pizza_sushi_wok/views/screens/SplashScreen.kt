@@ -41,7 +41,9 @@ fun SplashScreen(controller: NavHostController) {
             .fillMaxSize(),
         contentAlignment = Alignment.Center
     ){
-        Column {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             MultiSplashIndicator()
 
             AnimatedVisibility(visible = !NetworkRecevier.is_online.value) {
